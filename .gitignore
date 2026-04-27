@@ -1,0 +1,24 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# API Secrets
+client_secrets.json
+credentials.json
+*.json.json
+
+# Outputs & Video renders
+output/
+assets/
+*.mp4
+*.mp3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
