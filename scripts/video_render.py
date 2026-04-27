@@ -109,10 +109,22 @@ def create_subtitle_clip(text, duration, video_format, font_name="Arial"):
     font_size = fmt["subtitle_font_size"]
     y_ratio = fmt["subtitle_y_ratio"]
     
+    # Windows 환경 폰트 폴백 설정
+    font_path = font_name
+    if os.name == 'nt':
+        # 흔히 쓰이는 폰트 파일 매핑
+        font_map = {
+            "NanumGothic": "C:/Windows/Fonts/malgun.ttf", # 나눔고딕이 없을 경우 맑은 고딕
+            "NotoSansJP": "C:/Windows/Fonts/msgothic.ttc",
+            "NotoSansTC": "C:/Windows/Fonts/msjh.ttc",
+            "Arial": "C:/Windows/Fonts/arial.ttf"
+        }
+        font_path = font_map.get(font_name, "C:/Windows/Fonts/arial.ttf")
+
     try:
         txt_clip = TextClip(
             text=text,
-            font=font_name,
+            font=font_path,
             font_size=font_size,
             color="white",
             stroke_color="black",
