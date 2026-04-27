@@ -7,18 +7,24 @@ ENV/
 env.bak/
 venv.bak/
 
-# API Secrets
+# API Secrets & Auth Tokens
 client_secrets.json
 credentials.json
 *.json.json
+token*.pickle
 
 # Outputs & Video renders
 output/
 assets/
 *.mp4
 *.mp3
+*.wav
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
+
+# OS
+.DS_Store
+Thumbs.db

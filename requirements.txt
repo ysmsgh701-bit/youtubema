@@ -1,8 +1,19 @@
-moviepy
+# Core
+moviepy>=2.0
+pillow
+
+# TTS
+gTTS
+
+# YouTube API
 google-api-python-client
 google-auth-oauthlib
 google-auth-httplib2
+
+# Gemini API (번역/이미지 생성)
+google-generativeai
+
+# Utilities
 requests
 beautifulsoup4
 python-dotenv
-pillow
