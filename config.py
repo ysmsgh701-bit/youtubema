@@ -13,7 +13,7 @@ ASSETS_DIR = os.path.join(PROJECT_ROOT, "assets")
 BGM_DIR = os.path.join(ASSETS_DIR, "bgm")
 
 # ──────────────────────────────────────────────
-# 채널별 설정
+# 채널별 설정 및 캐릭터 일관성(Seed)
 # ──────────────────────────────────────────────
 CHANNELS = {
     "ko": {
@@ -23,6 +23,7 @@ CHANNELS = {
         "font": "NanumGothic",
         "description_suffix": "#주식 #경제 #배당주 #애니메이션",
         "tags_base": ["주식", "경제", "배당주", "인플레이션", "애니메이션", "시바견"],
+        "seed": 42001,
     },
     "ja": {
         "name": "Japanese",
@@ -31,6 +32,7 @@ CHANNELS = {
         "font": "NotoSansJP",
         "description_suffix": "#株式 #経済 #配当株 #アニメ",
         "tags_base": ["株式", "経済", "配当株", "インフレ", "アニメ", "柴犬"],
+        "seed": 42002,
     },
     "zh-TW": {
         "name": "Traditional Chinese (Taiwan)",
@@ -39,6 +41,7 @@ CHANNELS = {
         "font": "NotoSansTC",
         "description_suffix": "#股票 #經濟 #配息 #動畫",
         "tags_base": ["股票", "經濟", "配息", "通膨", "動畫", "柴犬"],
+        "seed": 42003,
     },
     "en": {
         "name": "English",
@@ -47,7 +50,16 @@ CHANNELS = {
         "font": "Arial",
         "description_suffix": "#stocks #economy #dividends #animation",
         "tags_base": ["stocks", "economy", "dividends", "inflation", "animation", "shiba"],
+        "seed": 42004,
     },
+}
+
+# ──────────────────────────────────────────────
+# 이미지 생성 공통 설정
+# ──────────────────────────────────────────────
+IMAGE_GENERATION = {
+    "model": "gemini-2.0-flash", # 또는 연결할 이미지 생성 API 모델명
+    "style_reference": "studio ghibli style, soft pastel colors, cel shading",
 }
 
 # ──────────────────────────────────────────────

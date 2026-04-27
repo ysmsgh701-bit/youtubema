@@ -137,7 +137,7 @@ def upload_video(
 
     response = request.execute()
     video_id = response.get("id")
-    print(f"[✓ 업로드 완료] Video ID: {video_id}")
+    print(f"[OK] 업로드 완료 Video ID: {video_id}")
     print(f"  URL: https://youtu.be/{video_id}")
 
     # 썸네일 등록 (A/B 테스트용)

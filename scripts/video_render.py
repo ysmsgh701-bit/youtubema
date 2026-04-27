@@ -235,17 +235,33 @@ def render_video(script_path, assets_dir, output_path, video_format="longform", 
 
     # BGM 합성 (있으면)
     if bgm_path and os.path.exists(bgm_path):
-        print(f"  ♬ BGM 합성: {bgm_path}")
+        from moviepy import concatenate_audioclips
+        print(f"  ♬ BGM 합성 및 오디오 더킹 적용: {bgm_path}")
         bgm = AudioFileClip(bgm_path)
         
         # BGM을 영상 길이에 맞게 루프
         if bgm.duration < final_video.duration:
             loops = math.ceil(final_video.duration / bgm.duration)
-            bgm_clips = [bgm] * loops
-            bgm = concatenate_videoclips(bgm_clips)  # audio concat
+            bgm = concatenate_audioclips([bgm] * loops)
         
         bgm = bgm.subclipped(0, final_video.duration)
-        bgm = bgm.with_volume_scaled(BGM_VOLUME)
+        
+        # 오디오 더킹 로직 (나레이션 구간 볼륨 축소)
+        # 1초 페이드인/아웃 및 나레이션 중 볼륨 감소
+        ducked_volume = BGM_VOLUME * 0.3
+        
+        def volume_filter(t):
+            # 시작 1.5초는 페이드인 (0 -> BGM_VOLUME)
+            # 종료 1.5초는 페이드아웃 (BGM_VOLUME -> 0)
+            # 그 외 나레이션 구간은 ducked_volume 유지
+            if t < 1.5:
+                return (t / 1.5) * BGM_VOLUME
+            elif t > (final_video.duration - 1.5):
+                return ((final_video.duration - t) / 1.5) * BGM_VOLUME
+            else:
+                return ducked_volume
+
+        bgm = bgm.with_volume_scaled(volume_filter)
         
         mixed_audio = CompositeAudioClip([final_video.audio, bgm])
         final_video = final_video.with_audio(mixed_audio)

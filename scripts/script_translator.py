@@ -35,26 +35,28 @@ def translate_script(script_data, target_lang, api_key=None):
     # Gemini API가 있으면 실제 번역 수행
     if api_key:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            from google import genai as gai
+            client = gai.Client(api_key=api_key)
 
-            for scene in translated["scenes"]:
-                prompt = (
-                    f"Translate the following narration to {channel['name']}. "
-                    f"Keep it natural, conversational, and culturally appropriate. "
-                    f"Only return the translated text, nothing else.\n\n"
-                    f"Original: {scene['narration']}"
-                )
-                response = model.generate_content(prompt)
-                scene["narration"] = response.text.strip()
-                
-                # 이미지 프롬프트는 영어로 유지 (Gemini 이미지 생성용)
-                # 캐릭터 일관성 강화
+            narrations = [s["narration"] for s in translated["scenes"]]
+            batch_prompt = (
+                f"Translate each of the following {len(narrations)} narration lines to {channel['name']}. "
+                f"Keep them natural, conversational, and culturally appropriate. "
+                f"Return ONLY a JSON array of translated strings in the same order, no extra text:\n"
+                + json.dumps(narrations, ensure_ascii=False)
+            )
+            response = client.models.generate_content(
+                model="gemini-2.5-flash", contents=batch_prompt
+            )
+            raw = response.text.strip().replace("```json", "").replace("```", "").strip()
+            translated_narrations = json.loads(raw)
+
+            for i, scene in enumerate(translated["scenes"]):
+                scene["narration"] = translated_narrations[i] if i < len(translated_narrations) else scene["narration"]
                 if CHARACTER_PROMPT not in scene.get("image_prompt", ""):
                     scene["image_prompt"] = f"{CHARACTER_PROMPT}, {scene.get('image_prompt', '')}"
 
-            # 썸네일 텍스트도 번역
+            # 썸네일 텍스트 번역
             if "thumbnail_plan" in translated:
                 thumb_prompt = (
                     f"Translate this YouTube thumbnail text to {channel['name']}. "
@@ -62,46 +64,75 @@ def translate_script(script_data, target_lang, api_key=None):
                     f"Only return the translated text.\n\n"
                     f"Original: {translated['thumbnail_plan'].get('text_overlay', '')}"
                 )
-                response = model.generate_content(thumb_prompt)
-                translated["thumbnail_plan"]["text_overlay"] = response.text.strip()
+                r2 = client.models.generate_content(model="gemini-2.5-flash", contents=thumb_prompt)
+                translated["thumbnail_plan"]["text_overlay"] = r2.text.strip()
 
-            print(f"  ✓ [{target_lang}] Gemini API 번역 완료")
+            print(f"  [{target_lang}] Gemini 번역 완료")
         except Exception as e:
             print(f"  ! [{target_lang}] Gemini 번역 실패, 원본 유지: {e}")
     else:
-        print(f"  ℹ [{target_lang}] API 키 미제공 — 원본 대본 복사")
+        print(f"  [{target_lang}] API 키 미제공 — 원본 대본 복사")
 
     return translated
 
 
-def create_shorts_script(script_data, max_scenes=1):
+def create_shorts_script(script_data, max_scenes=2, api_key=None):
     """
     롱폼 대본에서 쇼츠용 축약 대본을 생성합니다.
-    가장 임팩트 있는 장면만 추출합니다.
+    Gemini API를 사용하여 첫 장면을 강력한 3초 훅(Hook)으로 재작성합니다.
     
     Args:
         script_data: 원본 대본 dict
         max_scenes: 쇼츠에 포함할 최대 장면 수
+        api_key: Gemini API 키
     
     Returns:
         쇼츠용 축약 대본 dict
     """
     shorts = copy.deepcopy(script_data)
     shorts["format"] = "shorts"
+    lang_name = shorts.get("language", "Korean")
 
-    # 쇼츠: 첫 장면(훅) + 마지막 장면(결론)을 우선 선택
+    if api_key:
+        try:
+            from google import genai as gai
+            client = gai.Client(api_key=api_key)
+
+            full_text = " ".join([s["narration"] for s in shorts["scenes"]])
+            prompt = (
+                f"Rewrite the following script into a YouTube Shorts script in {lang_name}. "
+                f"TARGET: under 55 seconds total when read aloud at natural pace. "
+                f"STRUCTURE: exactly 3 scenes.\n"
+                f"  Scene 1 (Hook, ~5 sec): One shocking question or stat — grabs attention instantly.\n"
+                f"  Scene 2 (Core, ~35 sec): The single most important insight from the original script.\n"
+                f"  Scene 3 (CTA, ~10 sec): Subscribe + teaser for the full video.\n"
+                f"Return ONLY a JSON array, no markdown:\n"
+                f'[\n  {{"scene_no": 1, "narration": "...", "image_prompt": "...", "visual_description": "..."}},\n'
+                f'  {{"scene_no": 2, "narration": "...", "image_prompt": "...", "visual_description": "..."}},\n'
+                f'  {{"scene_no": 3, "narration": "...", "image_prompt": "...", "visual_description": "..."}}\n]\n\n'
+                f"image_prompts MUST include: '{CHARACTER_PROMPT}'.\n"
+                f"Original script:\n{full_text}"
+            )
+            response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+            result_text = response.text.replace("```json", "").replace("```", "").strip()
+            new_scenes = json.loads(result_text)
+            shorts["scenes"] = new_scenes
+            print(f"  [{shorts.get('lang_code')}] 쇼츠 대본 생성 완료 (3장면)")
+            return shorts
+        except Exception as e:
+            print(f"  ! [{shorts.get('lang_code')}] 쇼츠 대본 API 재작성 실패, 기본 축약 사용: {e}")
+
+    # API 오류 또는 미제공 시 기본 축약 로직
     scenes = shorts["scenes"]
     if len(scenes) > max_scenes:
         if max_scenes == 1:
-            # 첫 장면만 (강력한 훅)
             shorts["scenes"] = [scenes[0]]
         elif max_scenes == 2:
-            # 첫 장면 + 마지막 장면
             shorts["scenes"] = [scenes[0], scenes[-1]]
         else:
             shorts["scenes"] = scenes[:max_scenes]
 
-    print(f"  ✓ 쇼츠 대본 생성 ({len(shorts['scenes'])}개 장면)")
+    print(f"  ✓ [{shorts.get('lang_code')}] 기본 쇼츠 대본 생성 ({len(shorts['scenes'])}개 장면)")
     return shorts
 
 
@@ -139,7 +170,7 @@ def generate_all_translations(source_script_path, output_dir, languages=None, ap
             json.dump(translated, f, ensure_ascii=False, indent=2)
 
         # 2) 쇼츠 대본 (축약)
-        shorts = create_shorts_script(translated, max_scenes=2)
+        shorts = create_shorts_script(translated, max_scenes=2, api_key=api_key)
         shorts_path = os.path.join(lang_dir, "script_shorts.json")
         with open(shorts_path, "w", encoding="utf-8") as f:
             json.dump(shorts, f, ensure_ascii=False, indent=2)

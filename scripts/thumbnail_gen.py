@@ -117,16 +117,88 @@ def add_text_overlay(image_path, text, output_path, lang="ko", style="bold"):
     print(f"  ✓ 썸네일 저장: {output_path}")
 
 
-def generate_thumbnails(script_data, output_dir, lang="ko", base_images=None):
+def generate_thumbnail_image(prompt, output_path, api_key):
+    """
+    Gemini API로 썸네일 이미지를 생성합니다.
+
+    Returns:
+        True if an image was saved, False otherwise.
+    """
+    try:
+        from google import genai as gai
+        from google.genai import types as gtypes
+        client = gai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-image",
+            contents=f"Generate a high quality YouTube thumbnail image: {prompt}",
+            config=gtypes.GenerateContentConfig(response_modalities=["IMAGE"]),
+        )
+        for candidate in response.candidates:
+            for part in candidate.content.parts:
+                if hasattr(part, "inline_data") and part.inline_data:
+                    with open(output_path, "wb") as f:
+                        f.write(part.inline_data.data)
+                    return True
+    except Exception as e:
+        print(f"    Gemini 이미지 생성 실패: {e}")
+
+    return False
+
+
+def _make_placeholder_thumbnail(prompt, output_path, text_overlay="", lang="ko"):
+    """
+    Pillow로 색상 그라디언트 플레이스홀더 썸네일을 만듭니다.
+    Gemini API가 없거나 실패 시 대체로 사용됩니다.
+    """
+    if not HAS_PILLOW:
+        return False
+
+    from PIL import Image, ImageDraw, ImageFont
+
+    w, h = THUMBNAIL["width"], THUMBNAIL["height"]
+    img = Image.new("RGB", (w, h))
+    draw = ImageDraw.Draw(img)
+
+    # 진한 네이비 → 딥 블루 그라디언트
+    for y in range(h):
+        r = int(10 + (y / h) * 20)
+        g = int(15 + (y / h) * 30)
+        b = int(60 + (y / h) * 80)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    # 텍스트 오버레이 (있으면 표시)
+    if text_overlay and HAS_PILLOW:
+        try:
+            font = ImageFont.truetype("arial.ttf", 80)
+        except (OSError, IOError):
+            font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), text_overlay, font=font)
+        tw = bbox[2] - bbox[0]
+        tx = (w - tw) // 2
+        ty = h // 2 - 60
+        # 반투명 배경
+        draw.rectangle([tx - 20, ty - 20, tx + tw + 20, ty + 100], fill=(0, 0, 0, 180))
+        # 텍스트 (흰색 + 빨간 아웃라인)
+        for dx, dy in [(-3, -3), (3, -3), (-3, 3), (3, 3)]:
+            draw.text((tx + dx, ty + dy), text_overlay, font=font, fill=(220, 50, 50))
+        draw.text((tx, ty), text_overlay, font=font, fill=(255, 255, 255))
+
+    img.save(output_path, quality=95)
+    return True
+
+
+def generate_thumbnails(script_data, output_dir, lang="ko", base_images=None, api_key=None):
     """
     A/B 두 종류의 썸네일을 생성합니다.
-    
+    api_key가 있으면 Gemini 이미지 생성, 없으면 Pillow 플레이스홀더를 만듭니다.
+
     Args:
         script_data: 대본 dict
         output_dir: 출력 디렉토리
         lang: 언어 코드
-        base_images: {"A": path, "B": path} 기본 이미지 (없으면 프롬프트만 반환)
-    
+        base_images: {"A": path, "B": path} 직접 지정할 기본 이미지 (선택)
+        api_key: Gemini API 키
+
     Returns:
         {"A": path, "B": path, "prompts": {"A": str, "B": str}}
     """
@@ -142,19 +214,39 @@ def generate_thumbnails(script_data, output_dir, lang="ko", base_images=None):
         prompt = generate_thumbnail_prompts(script_data, variant)
         results["prompts"][variant] = prompt
 
+        output_path = os.path.join(output_dir, f"thumbnail_{variant}.jpg")
+
+        # 1순위: 직접 지정된 base_images
         if base_images and variant in base_images and os.path.exists(base_images[variant]):
-            output_path = os.path.join(output_dir, f"thumbnail_{variant}.jpg")
             style = "bold" if variant == "A" else "subtle"
             add_text_overlay(base_images[variant], text_overlay, output_path, lang, style)
             results[variant] = output_path
-        else:
-            # 이미지가 없으면 프롬프트만 기록
-            prompt_file = os.path.join(output_dir, f"thumbnail_{variant}_prompt.txt")
-            with open(prompt_file, "w", encoding="utf-8") as f:
-                f.write(prompt)
-            results[variant] = prompt_file
+            print(f"    [{variant}] base 이미지에 텍스트 오버레이 완료")
+            continue
 
-    print(f"  ✓ [{lang}] 썸네일 A/B 생성 완료: {output_dir}")
+        # 2순위: Gemini 이미지 생성
+        if api_key:
+            print(f"    [{variant}] Gemini로 썸네일 이미지 생성 중...")
+            if generate_thumbnail_image(prompt, output_path, api_key):
+                if text_overlay and HAS_PILLOW:
+                    add_text_overlay(output_path, text_overlay, output_path, lang)
+                results[variant] = output_path
+                print(f"    [{variant}] 썸네일 이미지 저장: {output_path}")
+                continue
+
+        # 3순위: Pillow 플레이스홀더 (+ 프롬프트 .txt 저장)
+        prompt_file = os.path.join(output_dir, f"thumbnail_{variant}_prompt.txt")
+        with open(prompt_file, "w", encoding="utf-8") as f:
+            f.write(prompt)
+
+        if _make_placeholder_thumbnail(prompt, output_path, text_overlay, lang):
+            results[variant] = output_path
+            print(f"    [{variant}] 플레이스홀더 썸네일 저장: {output_path}")
+        else:
+            results[variant] = prompt_file
+            print(f"    [{variant}] 프롬프트 파일만 저장: {prompt_file}")
+
+    print(f"  [{lang}] 썸네일 A/B 생성 완료: {output_dir}")
     return results
 
 

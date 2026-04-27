@@ -10,10 +10,11 @@ google-api-python-client
 google-auth-oauthlib
 google-auth-httplib2
 
-# Gemini API (번역/이미지 생성)
-google-generativeai
+# Gemini API (번역/이미지 생성) - 신규 SDK
+google-genai>=1.0
 
 # Utilities
 requests
 beautifulsoup4
 python-dotenv
+tenacity>=8.2.0
