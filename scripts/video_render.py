@@ -7,6 +7,7 @@ def render_video(script_path, assets_dir, output_path):
         data = json.load(f)
     
     clips = []
+    total_duration = 0.0
     
     print("[Render] 영상 합성 시작...")
     
@@ -18,16 +19,17 @@ def render_video(script_path, assets_dir, output_path):
             print(f" ! Warning: Scene {i+1} 자산 누락 (Skip)")
             continue
             
-        # 오디오 클립 생성
+        # 오디오 클립 생성 및 길이 측정
         audio_clip = AudioFileClip(audio_path)
         duration = audio_clip.duration
+        total_duration += duration
+        print(f" - [Scene {i+1}] 언어: {data.get('language', 'Unknown')} / 길이: {duration:.2f}초")
         
         # 이미지 클립 생성 (오디오 길이에 맞춤)
         img_clip = ImageClip(img_path).with_duration(duration)
         
-        # 자막 추가 (간이 자막)
+        # 자막 추가
         try:
-            # v2 스펙에 맞춘 텍스트 클립 (font 인자 필수)
             txt_clip = TextClip(text=scene['narration'], font="Arial", font_size=40, color='white', 
                                stroke_color='black', stroke_width=2,
                                method='caption', size=(img_clip.w*0.8, None)).with_duration(duration)
@@ -41,6 +43,7 @@ def render_video(script_path, assets_dir, output_path):
         clips.append(video_scene)
     
     if clips:
+        print(f"\n[Info] 예상되는 최종 영상 총 길이: {total_duration:.2f}초")
         final_video = concatenate_videoclips(clips, method="compose")
         final_video.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac")
         print(f"\n[성공] 최종 영상 생성 완료: {output_path}")
