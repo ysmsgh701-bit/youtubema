@@ -58,10 +58,42 @@ def generate_thumbnail_prompts(script_data, variant="A"):
     return prompt
 
 
+def _get_font(lang, size):
+    """언어에 맞는 시스템 폰트를 찾아 반환합니다."""
+    candidates = {
+        "ko": [
+            "C:/Windows/Fonts/malgunbd.ttf",  # 맑은 고딕 Bold
+            "C:/Windows/Fonts/malgun.ttf",
+            "C:/Windows/Fonts/gulim.ttc",
+        ],
+        "ja": [
+            "C:/Windows/Fonts/YuGothB.ttc",
+            "C:/Windows/Fonts/meiryo.ttc",
+            "C:/Windows/Fonts/msgothic.ttc",
+        ],
+        "zh-TW": [
+            "C:/Windows/Fonts/msjhbd.ttc",
+            "C:/Windows/Fonts/msjh.ttc",
+        ],
+    }
+    for path in candidates.get(lang, []):
+        try:
+            return ImageFont.truetype(path, size)
+        except (OSError, IOError):
+            pass
+    # 공통 fallback
+    for path in ["C:/Windows/Fonts/malgun.ttf", "arial.ttf"]:
+        try:
+            return ImageFont.truetype(path, size)
+        except (OSError, IOError):
+            pass
+    return ImageFont.load_default()
+
+
 def add_text_overlay(image_path, text, output_path, lang="ko", style="bold"):
     """
     이미지에 텍스트 오버레이를 추가합니다.
-    
+
     Args:
         image_path: 원본 이미지 경로
         text: 오버레이할 텍스트
@@ -80,16 +112,8 @@ def add_text_overlay(image_path, text, output_path, lang="ko", style="bold"):
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # 폰트 설정 (시스템 폰트 fallback)
     font_size = 72 if style == "bold" else 48
-    try:
-        channel_cfg = CHANNELS.get(lang, CHANNELS["en"])
-        font = ImageFont.truetype(channel_cfg["font"], font_size)
-    except (OSError, IOError):
-        try:
-            font = ImageFont.truetype("arial.ttf", font_size)
-        except (OSError, IOError):
-            font = ImageFont.load_default()
+    font = _get_font(lang, font_size)
 
     # 텍스트 위치 계산 (하단 1/3)
     bbox = draw.textbbox((0, 0), text, font=font)
@@ -168,10 +192,7 @@ def _make_placeholder_thumbnail(prompt, output_path, text_overlay="", lang="ko")
 
     # 텍스트 오버레이 (있으면 표시)
     if text_overlay and HAS_PILLOW:
-        try:
-            font = ImageFont.truetype("arial.ttf", 80)
-        except (OSError, IOError):
-            font = ImageFont.load_default()
+        font = _get_font(lang, 80)
         bbox = draw.textbbox((0, 0), text_overlay, font=font)
         tw = bbox[2] - bbox[0]
         tx = (w - tw) // 2

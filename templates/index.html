@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YouTube 파이프라인 대시보드</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #232634;
+  --border: #2e3147;
+  --accent: #6c8eff;
+  --accent2: #a78bfa;
+  --gold: #f5c842;
+  --green: #4ade80;
+  --red: #f87171;
+  --text: #e2e8f0;
+  --muted: #8892a4;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; margin: 0; }
+
+/* ── Header ── */
+.header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text); }
+.header .badge-track { font-size: 0.7rem; padding: 3px 8px; border-radius: 20px; background: var(--accent); color: #fff; cursor: pointer; }
+
+/* ── Nav Tabs ── */
+.nav-tabs { border-bottom: 1px solid var(--border); padding: 0 24px; background: var(--surface); }
+.nav-tabs .nav-link { color: var(--muted); border: none; padding: 12px 16px; font-size: 0.88rem; border-bottom: 2px solid transparent; }
+.nav-tabs .nav-link.active { color: var(--accent); background: none; border-bottom-color: var(--accent); }
+.nav-tabs .nav-link:hover { color: var(--text); }
+
+/* ── Layout ── */
+.tab-content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+.section-title { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+
+/* ── Forms ── */
+.form-control, .form-select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 7px; }
+.form-control:focus, .form-select:focus { background: var(--surface2); border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 2px rgba(108,142,255,.2); }
+.form-control::placeholder { color: var(--muted); }
+textarea.form-control { font-family: 'Consolas', monospace; font-size: 0.82rem; line-height: 1.6; }
+
+/* ── Buttons ── */
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; border-radius: 7px; font-size: 0.88rem; }
+.btn-primary:hover { background: #5a7aff; border-color: #5a7aff; }
+.btn-outline-secondary { border-color: var(--border); color: var(--muted); border-radius: 7px; font-size: 0.88rem; }
+.btn-outline-secondary:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+.btn-success { background: #22c55e; border-color: #22c55e; border-radius: 7px; font-size: 0.88rem; }
+.btn-warning { background: var(--gold); border-color: var(--gold); color: #000; border-radius: 7px; font-size: 0.88rem; }
+
+/* ── Track Pill ── */
+.track-btn { border-radius: 20px; padding: 6px 16px; font-size: 0.82rem; font-weight: 600; border: 2px solid var(--border); background: none; color: var(--muted); cursor: pointer; transition: all .15s; }
+.track-btn.active-finance { background: rgba(245,200,66,.15); border-color: var(--gold); color: var(--gold); }
+.track-btn.active-tft { background: rgba(167,139,250,.15); border-color: var(--accent2); color: var(--accent2); }
+
+/* ── Drop Zone ── */
+.dropzone { border: 2px dashed var(--border); border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; transition: all .2s; }
+.dropzone:hover, .dropzone.drag-over { border-color: var(--accent); background: rgba(108,142,255,.05); }
+.dropzone i { font-size: 2.5rem; color: var(--muted); }
+
+/* ── Log Box ── */
+.log-box { background: #0a0c12; border: 1px solid var(--border); border-radius: 8px; padding: 14px; height: 220px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 0.78rem; line-height: 1.7; color: #a0f0a0; }
+.log-box .log-step { color: var(--accent); font-weight: bold; }
+.log-box .log-ok { color: var(--green); }
+.log-box .log-err { color: var(--red); }
+
+/* ── Progress Bar ── */
+.pipeline-progress { height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; margin-bottom: 10px; }
+.pipeline-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s; }
+
+/* ── Thumbnail ── */
+.thumb-preview { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.thumb-preview img { width: 100%; display: block; }
+
+/* ── Meta Cards ── */
+.title-option { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 10px 14px; cursor: pointer; transition: all .15s; margin-bottom: 8px; font-size: 0.88rem; }
+.title-option:hover { border-color: var(--accent); }
+.title-option.selected { border-color: var(--green); background: rgba(74,222,128,.08); }
+
+/* ── OBS Steps ── */
+.obs-step { display: flex; gap: 14px; margin-bottom: 18px; }
+.obs-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
+.obs-step-body h6 { margin: 0 0 4px; font-size: 0.88rem; font-weight: 600; }
+.obs-step-body p { margin: 0; font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+.obs-code { background: #0a0c12; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-family: 'Consolas', monospace; font-size: 0.78rem; color: var(--gold); margin-top: 6px; }
+.track-badge-finance { background: rgba(245,200,66,.15); color: var(--gold); border: 1px solid var(--gold); border-radius: 4px; padding: 1px 7px; font-size: 0.72rem; }
+.track-badge-tft { background: rgba(167,139,250,.15); color: var(--accent2); border: 1px solid var(--accent2); border-radius: 4px; padding: 1px 7px; font-size: 0.72rem; }
+
+/* ── SRT viewer ── */
+.srt-viewer { background: #0a0c12; border: 1px solid var(--border); border-radius: 8px; padding: 14px; max-height: 240px; overflow-y: auto; font-size: 0.78rem; color: #c0d0f0; line-height: 1.8; font-family: 'Consolas', monospace; white-space: pre-wrap; }
+
+/* ── Slider trim ── */
+.trim-slider { accent-color: var(--accent); width: 100%; }
+.time-label { font-size: 0.78rem; color: var(--muted); font-family: monospace; }
+
+/* ── Result history ── */
+.result-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s; }
+.result-item:hover { border-color: var(--accent); }
+.result-ts { font-size: 0.72rem; color: var(--muted); font-family: monospace; }
+.result-title { font-size: 0.88rem; font-weight: 600; margin-top: 2px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <i class="bi bi-play-circle-fill" style="color:var(--accent);font-size:1.3rem"></i>
+  <h1>YouTube 파이프라인 대시보드</h1>
+  <div class="ms-auto d-flex gap-2 align-items-center">
+    <button class="track-btn active-finance" id="globalTrackFinance" onclick="setGlobalTrack('finance')">재무 AI</button>
+    <button class="track-btn" id="globalTrackTft" onclick="setGlobalTrack('tft')">TFT 플레이</button>
+  </div>
+</div>
+
+<!-- Nav Tabs -->
+<ul class="nav nav-tabs" id="mainTabs">
+  <li class="nav-item"><a class="nav-link active" href="#" onclick="showTab('tab-script',this)"><i class="bi bi-pencil-square me-1"></i>대본 생성</a></li>
+  <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('tab-aivideo',this)"><i class="bi bi-magic me-1"></i>AI 영상 제작</a></li>
+  <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('tab-obs',this)"><i class="bi bi-camera-video me-1"></i>OBS 가이드</a></li>
+  <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('tab-edit',this)"><i class="bi bi-scissors me-1"></i>영상 편집</a></li>
+  <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('tab-pipeline',this)"><i class="bi bi-gear me-1"></i>파이프라인</a></li>
+  <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('tab-results',this)"><i class="bi bi-collection-play me-1"></i>결과</a></li>
+</ul>
+
+<div class="tab-content">
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB 1: 대본 생성 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="tab-script">
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="section-title">주제 입력</div>
+        <input type="text" class="form-control mb-3" id="scriptTopic"
+               placeholder="예: 엑셀 대신 AI 쓰는 3가지 이유"
+               onkeydown="if(event.key==='Enter') generateScript()">
+        <div class="d-flex gap-2 mb-3">
+          <select class="form-select form-select-sm" id="scriptTrack">
+            <option value="finance">재무현직자 AI활용</option>
+            <option value="tft">TFT 플레이</option>
+          </select>
+          <button class="btn btn-primary" onclick="generateScript()" id="btnGenScript">
+            <i class="bi bi-stars me-1"></i>Gemini 생성
+          </button>
+        </div>
+        <div id="scriptStatus" class="text-muted" style="font-size:.8rem"></div>
+      </div>
+
+      <!-- 대본 팁 -->
+      <div class="card">
+        <div class="section-title">트랙별 대본 가이드</div>
+        <div style="font-size:.82rem;color:var(--muted);line-height:1.7">
+          <span class="track-badge-finance">재무AI</span>
+          <ul style="margin-top:6px;padding-left:16px">
+            <li>훅: 실무 고민을 첫 문장으로</li>
+            <li>본론: AI 도구 화면 시연 기준</li>
+            <li>마무리: 실제 적용 방법 + CTA</li>
+          </ul>
+          <span class="track-badge-tft">TFT</span>
+          <ul style="margin-top:6px;padding-left:16px">
+            <li>훅: 상황 소개 ("지금부터 미칩니다")</li>
+            <li>본론: 핵심 플레이 단계별 해설</li>
+            <li>마무리: 교훈/팁 + 구독 유도</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card" style="height:calc(100% - 0px)">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="section-title mb-0">생성된 대본</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="copyScript()"><i class="bi bi-clipboard me-1"></i>복사</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="downloadScript()"><i class="bi bi-download me-1"></i>MD 저장</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="exportDocx()" style="color:var(--accent)"><i class="bi bi-file-word me-1"></i>Word 저장</button>
+          </div>
+        </div>
+        <textarea id="scriptOutput" class="form-control" rows="22"
+                  placeholder="주제를 입력하고 'Gemini 생성'을 클릭하세요..."></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB 2: AI 영상 제작 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="tab-aivideo" style="display:none">
+
+  <!-- 방법 선택 -->
+  <div class="d-flex gap-2 mb-4 flex-wrap">
+    <button class="btn btn-primary" onclick="selectMethod('auto')" id="method-auto">
+      <i class="bi bi-robot me-1"></i>방법 1 — 완전 자동 (파이프라인)
+    </button>
+    <button class="btn btn-outline-secondary" onclick="selectMethod('capcut')" id="method-capcut">
+      <i class="bi bi-camera-reels me-1"></i>방법 2 — CapCut AI
+    </button>
+    <button class="btn btn-outline-secondary" onclick="selectMethod('canva')" id="method-canva">
+      <i class="bi bi-palette me-1"></i>방법 3 — Canva
+    </button>
+  </div>
+
+  <!-- 방법 1: 완전 자동 파이프라인 -->
+  <div id="method-auto-panel">
+    <div class="row g-3">
+      <div class="col-lg-5">
+        <div class="card">
+          <div class="section-title">완전 자동 AI 영상 생성</div>
+          <div class="mb-3 p-3" style="background:rgba(108,142,255,.08);border-radius:8px;font-size:.82rem;line-height:1.7">
+            <i class="bi bi-info-circle me-1" style="color:var(--accent)"></i>
+            <strong>현재 프로젝트에 이미 구현된</strong> AI 영상 자동화입니다.<br>
+            주제 입력 → Gemini 대본 → Pollinations.ai 이미지 → gTTS 음성 → MoviePy 렌더링 → YouTube 업로드까지 자동 실행됩니다.
+          </div>
+          <label style="font-size:.78rem;color:var(--muted)">주제 (비워두면 뉴스에서 자동 선택)</label>
+          <input type="text" class="form-control form-control-sm mb-3" id="aiVideoTopic"
+                 placeholder="예: 미국 금리 인상의 한국 경제 영향">
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label style="font-size:.78rem;color:var(--muted)">언어</label>
+              <select class="form-select form-select-sm" id="aiVideoLangs">
+                <option value="ko">한국어만</option>
+                <option value="ko,ja">한국어 + 일본어</option>
+                <option value="ko,en">한국어 + 영어</option>
+                <option value="ko,ja,en">전체 (ko/ja/en)</option>
+              </select>
+            </div>
+            <div class="col">
+              <label style="font-size:.78rem;color:var(--muted)">포맷</label>
+              <select class="form-select form-select-sm" id="aiVideoFormat">
+                <option value="longform">롱폼만</option>
+                <option value="shorts">쇼츠만</option>
+                <option value="longform,shorts">롱폼 + 쇼츠</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="aiVideoDryRun" checked>
+            <label class="form-check-label" style="font-size:.78rem" for="aiVideoDryRun">Dry Run (업로드 생략)</label>
+          </div>
+          <button class="btn btn-primary w-100" onclick="runAiVideo()">
+            <i class="bi bi-play-fill me-1"></i>AI 영상 생성 시작
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="section-title">생성 흐름</div>
+          <div style="font-size:.8rem;color:var(--muted);line-height:2">
+            <div><span style="color:var(--accent)">①</span> Gemini → 25~28장면 대본 생성</div>
+            <div><span style="color:var(--accent)">②</span> Pollinations.ai → 장면별 이미지 (무료)</div>
+            <div><span style="color:var(--accent)">③</span> gTTS → 한국어 음성 합성</div>
+            <div><span style="color:var(--accent)">④</span> MoviePy → 영상 렌더링 (~10분)</div>
+            <div><span style="color:var(--accent)">⑤</span> YouTube API → 자동 업로드</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="card">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="section-title mb-0">실행 로그</div>
+            <span id="aiVideoStatusBadge" class="badge" style="background:var(--surface2);color:var(--muted)">대기</span>
+          </div>
+          <div class="pipeline-progress"><div class="pipeline-progress-bar" id="aiVideoProgressBar" style="width:0%"></div></div>
+          <div class="log-box" id="aiVideoLog"><span style="color:var(--muted)">실행 대기 중...</span></div>
+          <div id="aiVideoResult" class="mt-3" style="display:none">
+            <div class="p-3" style="background:rgba(74,222,128,.08);border:1px solid var(--green);border-radius:8px;font-size:.82rem">
+              <i class="bi bi-check-circle-fill me-1" style="color:var(--green)"></i>
+              <strong>완료!</strong> 결과 탭에서 확인하세요.
+              <div id="aiVideoResultPath" class="mt-1" style="color:var(--muted);font-size:.75rem"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 방법 2: CapCut -->
+  <div id="method-capcut-panel" style="display:none">
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <span style="font-size:1.4rem">🎬</span>
+            <div>
+              <div style="font-weight:700">CapCut AI — 스크립트→영상</div>
+              <div style="font-size:.75rem;color:var(--muted)">무료 | 설치됨 | 약 10~15분</div>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">1</div>
+            <div class="obs-step-body">
+              <h6>대본 Word 파일 준비</h6>
+              <p>대본 생성 탭에서 주제 입력 → <strong>Word 저장</strong> 클릭<br>
+                 또는 아래에서 바로 복사하세요</p>
+              <div class="d-flex gap-2 mt-2">
+                <button class="btn btn-outline-secondary btn-sm" onclick="showTab('tab-script', document.querySelectorAll('.nav-link')[0])">
+                  <i class="bi bi-pencil-square me-1"></i>대본 탭으로
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">2</div>
+            <div class="obs-step-body">
+              <h6>CapCut 실행 → AI 도구</h6>
+              <p>CapCut 열기 → 상단 메뉴 <strong>"AI 도구"</strong> 또는<br>
+                 새 프로젝트 → <strong>"스크립트로 동영상 만들기"</strong></p>
+              <div class="obs-code">CapCut → AI 도구 → 스크립트로 동영상 만들기</div>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">3</div>
+            <div class="obs-step-body">
+              <h6>대본 붙여넣기</h6>
+              <p>대본 텍스트를 입력창에 붙여넣기<br>
+                 섹션별(훅/본론/마무리)로 나눠서 넣으면 장면 구성이 더 잘 됨</p>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">4</div>
+            <div class="obs-step-body">
+              <h6>스타일 선택</h6>
+              <p>트랙별 권장 스타일:<br>
+                 <span class="track-badge-finance">재무AI</span> 비즈니스/뉴스 스타일 → 차트/그래프 클립<br>
+                 <span class="track-badge-tft">TFT</span> 게이밍/다이나믹 스타일 → 활기찬 전환효과</p>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">5</div>
+            <div class="obs-step-body">
+              <h6>AI 보이스 선택 (텍스트→음성)</h6>
+              <p>CapCut 내장 TTS → 한국어 → <strong>"뉴스 앵커"</strong> 또는 <strong>"여성 전문가"</strong><br>
+                 볼륨: 배경음악 20% / 음성 80% 비율 권장</p>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">6</div>
+            <div class="obs-step-body">
+              <h6>자막 자동 생성 + 내보내기</h6>
+              <p>텍스트 탭 → <strong>자동 캡션</strong> 생성<br>
+                 내보내기: 1080p / MP4 → <code style="color:var(--gold)">inbox/finance/</code> 저장<br>
+                 → 파이프라인이 자동으로 YouTube 업로드 처리</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="section-title">CapCut 트랙별 권장 설정</div>
+          <table style="width:100%;font-size:.8rem;border-collapse:collapse">
+            <thead>
+              <tr style="color:var(--muted);border-bottom:1px solid var(--border)">
+                <th style="padding:6px 8px">항목</th>
+                <th style="padding:6px 8px"><span class="track-badge-finance">재무AI</span></th>
+                <th style="padding:6px 8px"><span class="track-badge-tft">TFT</span></th>
+              </tr>
+            </thead>
+            <tbody style="color:var(--text)">
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:7px 8px;color:var(--muted)">포맷</td>
+                <td style="padding:7px 8px">16:9 (롱폼)</td>
+                <td style="padding:7px 8px">16:9 또는 9:16</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:7px 8px;color:var(--muted)">클립 스타일</td>
+                <td style="padding:7px 8px">뉴스/비즈니스</td>
+                <td style="padding:7px 8px">게이밍/다이나믹</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:7px 8px;color:var(--muted)">AI 보이스</td>
+                <td style="padding:7px 8px">뉴스 앵커 (차분)</td>
+                <td style="padding:7px 8px">에너지 넘침</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:7px 8px;color:var(--muted)">전환효과</td>
+                <td style="padding:7px 8px">슬라이드/페이드</td>
+                <td style="padding:7px 8px">줌/플래시</td>
+              </tr>
+              <tr>
+                <td style="padding:7px 8px;color:var(--muted)">배경음악</td>
+                <td style="padding:7px 8px">기업/피아노</td>
+                <td style="padding:7px 8px">EDM/게임OST</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="section-title">CapCut 완료 후 자동 처리 연동</div>
+          <div style="font-size:.82rem;color:var(--muted);line-height:1.8">
+            CapCut에서 내보낸 MP4를 아래 폴더에 저장하면<br>
+            <code style="color:var(--gold)">watch_folder.py</code> 가 감지해서 자동으로<br>
+            자막·메타·썸네일·업로드까지 처리합니다.
+          </div>
+          <div class="obs-code mt-2" id="capcut-inbox-path">inbox\finance\</div>
+          <button class="btn btn-outline-secondary btn-sm mt-2 w-100" onclick="openInboxFolder()">
+            <i class="bi bi-folder2-open me-1"></i>inbox 폴더 열기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 방법 3: Canva -->
+  <div id="method-canva-panel" style="display:none">
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <span style="font-size:1.4rem">🎨</span>
+            <div>
+              <div style="font-weight:700">Canva — 프레젠테이션→영상</div>
+              <div style="font-size:.75rem;color:var(--muted)">무료 | 설치됨 | 약 15~20분</div>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">1</div>
+            <div class="obs-step-body">
+              <h6>Canva 실행 → 새 프레젠테이션</h6>
+              <p>Canva 열기 → <strong>프레젠테이션 (16:9)</strong> 선택<br>
+                 검색창에 트랙 키워드 입력해서 템플릿 선택</p>
+              <div class="obs-code">재무AI: "비즈니스 발표" 템플릿<br>TFT: "게이밍" 또는 "YouTube 썸네일" 템플릿</div>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">2</div>
+            <div class="obs-step-body">
+              <h6>Magic Write로 슬라이드 생성</h6>
+              <p>좌측 <strong>앱 → Magic Write</strong> 클릭<br>
+                 대본 텍스트 붙여넣기 → 슬라이드 자동 분배</p>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">3</div>
+            <div class="obs-step-body">
+              <h6>AI 이미지 삽입</h6>
+              <p>각 슬라이드에 <strong>앱 → Text to Image</strong>로 장면 이미지 생성<br>
+                 하루 50회 무료 (무료 플랜 기준)</p>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">4</div>
+            <div class="obs-step-body">
+              <h6>프레젠테이션 녹화 (Canva 내장)</h6>
+              <p>공유 → <strong>프레젠테이션 녹화</strong><br>
+                 화면 + 웹캠 + 마이크 동시 녹화 가능<br>
+                 직접 대본을 보며 읽기 — 가장 자연스러운 영상</p>
+              <div class="obs-code">공유 → 프레젠테이션 녹화 → 화면+카메라 선택 → 녹화 시작</div>
+            </div>
+          </div>
+
+          <div class="obs-step">
+            <div class="obs-step-num">5</div>
+            <div class="obs-step-body">
+              <h6>MP4 내보내기</h6>
+              <p>공유 → 다운로드 → <strong>MP4 동영상</strong><br>
+                 → <code style="color:var(--gold)">inbox/{트랙}/</code> 폴더에 저장<br>
+                 → 파이프라인 자동 처리</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="section-title">Canva vs CapCut 비교</div>
+          <table style="width:100%;font-size:.8rem;border-collapse:collapse">
+            <thead>
+              <tr style="color:var(--muted);border-bottom:1px solid var(--border)">
+                <th style="padding:6px 8px">항목</th>
+                <th style="padding:6px 8px">CapCut</th>
+                <th style="padding:6px 8px">Canva</th>
+              </tr>
+            </thead>
+            <tbody style="color:var(--text)">
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:7px 8px;color:var(--muted)">영상 스타일</td>
+                <td style="padding:7px 8px">유튜브 특화</td>
+                <td style="padding:7px 8px">발표/교육형</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:7px 8px;color:var(--muted)">AI 기능</td>
+                <td style="padding:7px 8px">스크립트→영상</td>
+                <td style="padding:7px 8px">텍스트→이미지</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:7px 8px;color:var(--muted)">TTS 내장</td>
+                <td style="padding:7px 8px">✅ 한국어 지원</td>
+                <td style="padding:7px 8px">❌ (직접 녹음)</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:7px 8px;color:var(--muted)">자동화 수준</td>
+                <td style="padding:7px 8px">높음</td>
+                <td style="padding:7px 8px">중간</td>
+              </tr>
+              <tr>
+                <td style="padding:7px 8px;color:var(--muted)">추천 트랙</td>
+                <td style="padding:7px 8px">TFT, 재무AI 모두</td>
+                <td style="padding:7px 8px">재무AI (강의형)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="section-title">전체 워크플로우 요약</div>
+          <div style="font-size:.82rem;line-height:2;color:var(--muted)">
+            <div><span style="color:var(--gold)">①</span> 대본 탭 → 주제 입력 → <strong>Word 저장</strong></div>
+            <div><span style="color:var(--gold)">②</span> CapCut/Canva → 대본 붙여넣기 → 영상 제작</div>
+            <div><span style="color:var(--gold)">③</span> MP4 내보내기 → <code>inbox/{트랙}/</code> 저장</div>
+            <div><span style="color:var(--gold)">④</span> 파이프라인 자동 실행 (자막+메타+썸네일)</div>
+            <div><span style="color:var(--gold)">⑤</span> 결과 탭 → 제목 선택 → YouTube 업로드</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB 3: OBS 가이드 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="tab-obs" style="display:none">
+  <div class="row g-3">
+
+    <!-- 공통 설정 -->
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="section-title">OBS Studio 기본 설정</div>
+        <div class="obs-step">
+          <div class="obs-step-num">1</div>
+          <div class="obs-step-body">
+            <h6>설치 및 초기 설정</h6>
+            <p>OBS Studio 공식 사이트에서 설치 후 <strong>자동 구성 마법사</strong> 실행<br>
+               용도: <em>녹화 최적화</em> 선택 → 해상도 1920×1080, 60fps</p>
+          </div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num">2</div>
+          <div class="obs-step-body">
+            <h6>인코더 설정 (설정 → 출력 → 녹화)</h6>
+            <p>인코더: <strong>H.264 (x264)</strong> 또는 NVIDIA NVENC<br>
+               품질: CRF 18 (고화질) / CRF 23 (용량 절충)</p>
+            <div class="obs-code">설정 → 출력 → 녹화 탭 → 품질 프리셋: "높음"</div>
+          </div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num">3</div>
+          <div class="obs-step-body">
+            <h6>마이크 설정 (음성 믹서)</h6>
+            <p>마이크 레벨 -12 ~ -6 dB 유지 (초록~노랑 구간)<br>
+               노이즈 억제 필터 추가 권장 → <em>소스 우클릭 → 필터 → + → RNNoise</em></p>
+          </div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num">4</div>
+          <div class="obs-step-body">
+            <h6>녹화 파일 저장 경로 설정 (핵심!)</h6>
+            <p>설정 → 출력 → 녹화 경로를 아래 폴더로 지정하면<br>녹화 완료 즉시 파이프라인이 자동 실행됩니다</p>
+            <div class="obs-code" id="obs-inbox-path">C:\...\youtube\inbox\finance\</div>
+          </div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num">5</div>
+          <div class="obs-step-body">
+            <h6>핫키 설정 (설정 → 단축키)</h6>
+            <p>녹화 시작: <kbd>F9</kbd> &nbsp;&nbsp; 녹화 중지: <kbd>F10</kbd><br>
+               녹화 중 확인: 우하단 빨간 ● 표시</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 트랙별 설정 -->
+    <div class="col-lg-6">
+      <div class="card mb-3">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span class="track-badge-finance">재무AI</span>
+          <div class="section-title mb-0">재무 트랙 OBS 설정</div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num" style="background:var(--gold);color:#000">A</div>
+          <div class="obs-step-body">
+            <h6>소스 구성</h6>
+            <p>소스 추가 → <strong>화면 캡처</strong> (전체 모니터)<br>
+               PPT / Excel / ChatGPT 화면 등 실무 화면 그대로 캡처</p>
+          </div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num" style="background:var(--gold);color:#000">B</div>
+          <div class="obs-step-body">
+            <h6>웹캠 PIP (선택)</h6>
+            <p>소스 추가 → <strong>비디오 캡처 장치</strong><br>
+               우하단 배치, 크기 240×180 정도로 조절</p>
+          </div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num" style="background:var(--gold);color:#000">C</div>
+          <div class="obs-step-body">
+            <h6>권장 설정</h6>
+            <p>해상도: 1920×1080 / FPS: 30<br>
+               저장경로: <code style="color:var(--gold)">inbox/finance/</code></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span class="track-badge-tft">TFT</span>
+          <div class="section-title mb-0">TFT 트랙 OBS 설정</div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num" style="background:var(--accent2)">A</div>
+          <div class="obs-step-body">
+            <h6>게임 캡처 소스</h6>
+            <p>소스 추가 → <strong>게임 캡처</strong><br>
+               모드: "특정 창 캡처" → 리그 오브 레전드 선택<br>
+               안티치트 호환성 체크 권장</p>
+          </div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num" style="background:var(--accent2)">B</div>
+          <div class="obs-step-body">
+            <h6>얼굴캠 + 마이크 반응 표시 (선택)</h6>
+            <p>소스 추가 → 비디오 캡처 → 좌하단 배치<br>
+               오디오 시각화 플러그인(Waveform) 추가 시 더 생동감</p>
+          </div>
+        </div>
+        <div class="obs-step">
+          <div class="obs-step-num" style="background:var(--accent2)">C</div>
+          <div class="obs-step-body">
+            <h6>권장 설정</h6>
+            <p>해상도: 1920×1080 / FPS: 60 (게임 부드럽게)<br>
+               저장경로: <code style="color:var(--accent2)">inbox/tft/</code></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB 3: 영상 편집 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="tab-edit" style="display:none">
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="section-title">영상 불러오기</div>
+
+        <!-- 드롭존 -->
+        <div class="dropzone mb-3" id="editDropzone"
+             onclick="document.getElementById('editFileInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleEditDrop(event)">
+          <i class="bi bi-cloud-upload"></i>
+          <div class="mt-2" style="font-size:.88rem;color:var(--muted)">영상 파일을 드래그하거나 클릭해서 선택</div>
+          <div style="font-size:.75rem;color:var(--border);margin-top:4px">MP4, MOV, MKV, AVI, WEBM</div>
+        </div>
+        <input type="file" id="editFileInput" accept="video/*" style="display:none" onchange="loadVideoFile(this)">
+
+        <div id="videoInfoBox" style="display:none">
+          <div class="mb-2" style="font-size:.82rem">
+            <i class="bi bi-film me-1" style="color:var(--accent)"></i>
+            <span id="videoFilename" style="font-weight:600"></span>
+          </div>
+          <div class="d-flex gap-3 mb-3" style="font-size:.78rem;color:var(--muted)">
+            <span><i class="bi bi-clock me-1"></i><span id="videoDuration">0</span>초</span>
+            <span><i class="bi bi-aspect-ratio me-1"></i><span id="videoRes">-</span></span>
+            <span><i class="bi bi-camera-video me-1"></i><span id="videoFps">-</span>fps</span>
+          </div>
+
+          <!-- Trim -->
+          <div class="section-title">구간 잘라내기 (트림)</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label style="font-size:.75rem;color:var(--muted)">시작 (초)</label>
+              <input type="range" class="trim-slider" id="trimStart" min="0" step="0.5" value="0" oninput="updateTrimLabels()">
+              <div class="time-label" id="trimStartLabel">0.0s</div>
+            </div>
+            <div class="col-6">
+              <label style="font-size:.75rem;color:var(--muted)">종료 (초)</label>
+              <input type="range" class="trim-slider" id="trimEnd" min="0" step="0.5" value="0" oninput="updateTrimLabels()">
+              <div class="time-label" id="trimEndLabel">0.0s</div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-1">
+            <div id="trimDurationLabel" style="font-size:.78rem;color:var(--muted)">구간 길이: -</div>
+          </div>
+          <button class="btn btn-warning w-100 mt-3" onclick="trimVideo()" id="btnTrim">
+            <i class="bi bi-scissors me-1"></i>이 구간으로 자르기
+          </button>
+          <div id="trimStatus" class="mt-2" style="font-size:.78rem;color:var(--muted)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="section-title">파이프라인 전달</div>
+        <div id="editNoBideo" style="color:var(--muted);font-size:.85rem">영상을 먼저 불러오세요.</div>
+        <div id="editPipelineReady" style="display:none">
+          <div class="mb-3 p-3" style="background:var(--surface2);border-radius:8px;font-size:.82rem">
+            <div class="mb-1" style="color:var(--muted)">처리할 파일</div>
+            <div id="editReadyPath" style="font-weight:600;word-break:break-all"></div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label style="font-size:.78rem;color:var(--muted)">트랙</label>
+              <select class="form-select form-select-sm" id="editTrack">
+                <option value="finance">재무현직자 AI활용</option>
+                <option value="tft">TFT 플레이</option>
+              </select>
+            </div>
+            <div class="col">
+              <label style="font-size:.78rem;color:var(--muted)">Whisper 모델</label>
+              <select class="form-select form-select-sm" id="editModel">
+                <option value="small">small (빠름)</option>
+                <option value="medium">medium</option>
+                <option value="large-v3" selected>large-v3 (정확)</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label style="font-size:.78rem;color:var(--muted)">공개 설정</label>
+              <select class="form-select form-select-sm" id="editPrivacy">
+                <option value="private" selected>비공개</option>
+                <option value="unlisted">링크 공개</option>
+                <option value="public">전체 공개</option>
+              </select>
+            </div>
+            <div class="col d-flex align-items-end">
+              <div class="form-check mb-1">
+                <input class="form-check-input" type="checkbox" id="editDryRun" checked>
+                <label class="form-check-label" style="font-size:.78rem" for="editDryRun">Dry Run (업로드 생략)</label>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary w-100" onclick="sendToPipeline()">
+            <i class="bi bi-play-fill me-1"></i>파이프라인 실행
+          </button>
+        </div>
+      </div>
+
+      <!-- 미리보기 영역 -->
+      <div class="card mt-0">
+        <div class="section-title">비디오 미리보기</div>
+        <video id="videoPreview" controls style="width:100%;border-radius:6px;background:#000;display:none" preload="metadata"></video>
+        <div id="noPreview" style="color:var(--muted);font-size:.82rem">영상을 불러오면 여기에 표시됩니다.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB 4: 파이프라인 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="tab-pipeline" style="display:none">
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="section-title">파이프라인 설정</div>
+        <label style="font-size:.78rem;color:var(--muted)">영상 파일 경로</label>
+        <div class="d-flex gap-2 mb-3">
+          <input type="text" class="form-control form-control-sm" id="pipelineVideoPath" placeholder="output/... 또는 inbox/finance/video.mp4">
+          <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('pipelineFileInput').click()">찾기</button>
+          <input type="file" id="pipelineFileInput" accept="video/*" style="display:none" onchange="setPipelinePath(this)">
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col">
+            <label style="font-size:.78rem;color:var(--muted)">트랙</label>
+            <select class="form-select form-select-sm" id="pipelineTrack">
+              <option value="finance">재무현직자 AI활용</option>
+              <option value="tft">TFT 플레이</option>
+            </select>
+          </div>
+          <div class="col">
+            <label style="font-size:.78rem;color:var(--muted)">Whisper 모델</label>
+            <select class="form-select form-select-sm" id="pipelineModel">
+              <option value="small">small (빠름)</option>
+              <option value="medium">medium</option>
+              <option value="large-v3" selected>large-v3 (정확)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col">
+            <label style="font-size:.78rem;color:var(--muted)">공개 설정</label>
+            <select class="form-select form-select-sm" id="pipelinePrivacy">
+              <option value="private" selected>비공개</option>
+              <option value="unlisted">링크 공개</option>
+              <option value="public">전체 공개</option>
+            </select>
+          </div>
+          <div class="col d-flex align-items-end pb-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="pipelineDryRun" checked>
+              <label class="form-check-label" style="font-size:.78rem" for="pipelineDryRun">Dry Run</label>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary w-100" onclick="runPipeline()">
+          <i class="bi bi-play-fill me-1"></i>파이프라인 실행
+        </button>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="section-title mb-0">실행 로그</div>
+          <button class="btn btn-outline-secondary btn-sm" onclick="clearLog()">지우기</button>
+        </div>
+        <div class="pipeline-progress"><div class="pipeline-progress-bar" id="pipelineProgressBar" style="width:0%"></div></div>
+        <div class="log-box" id="pipelineLog"><span style="color:var(--muted)">파이프라인 실행 대기 중...</span></div>
+        <div id="pipelineStatus" class="mt-2" style="font-size:.8rem;color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TAB 5: 결과 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="tab-results" style="display:none">
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="section-title mb-0">실행 기록</div>
+          <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" id="resultTrackFilter" style="width:auto" onchange="loadResults()">
+              <option value="finance">재무AI</option>
+              <option value="tft">TFT</option>
+            </select>
+            <button class="btn btn-outline-secondary btn-sm" onclick="loadResults()"><i class="bi bi-arrow-clockwise"></i></button>
+          </div>
+        </div>
+        <div id="resultList"><div style="color:var(--muted);font-size:.82rem">불러오는 중...</div></div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div id="resultDetail" style="display:none">
+        <!-- 썸네일 -->
+        <div class="card mb-3">
+          <div class="section-title">썸네일</div>
+          <div class="thumb-preview"><img id="resultThumb" src="" alt="thumbnail"></div>
+        </div>
+
+        <!-- 제목 선택 -->
+        <div class="card mb-3">
+          <div class="section-title">제목 선택 (클릭해서 선택)</div>
+          <div id="titleOptions"></div>
+        </div>
+
+        <!-- 설명 -->
+        <div class="card mb-3">
+          <div class="section-title">영상 설명</div>
+          <textarea id="resultDescription" class="form-control" rows="4"></textarea>
+        </div>
+
+        <!-- 태그 -->
+        <div class="card mb-3">
+          <div class="section-title">태그</div>
+          <textarea id="resultTags" class="form-control" rows="2"></textarea>
+        </div>
+
+        <!-- 자막 -->
+        <div class="card mb-3" id="srtCard" style="display:none">
+          <div class="section-title">자막 (SRT)</div>
+          <div class="srt-viewer" id="resultSrt"></div>
+        </div>
+
+        <!-- 업로드 -->
+        <div class="card">
+          <div class="section-title">YouTube 업로드</div>
+          <div class="row g-2 align-items-end">
+            <div class="col">
+              <select class="form-select form-select-sm" id="resultPrivacy">
+                <option value="private" selected>비공개</option>
+                <option value="unlisted">링크 공개</option>
+                <option value="public">전체 공개</option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-success" onclick="uploadToYouTube()">
+                <i class="bi bi-youtube me-1"></i>YouTube 업로드
+              </button>
+            </div>
+          </div>
+          <div id="uploadStatus" class="mt-2" style="font-size:.8rem"></div>
+        </div>
+      </div>
+      <div id="resultPlaceholder" style="color:var(--muted);font-size:.85rem;text-align:center;padding:60px 0">
+        <i class="bi bi-arrow-left" style="font-size:2rem;display:block;margin-bottom:8px"></i>
+        왼쪽에서 결과를 선택하세요
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-content -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let gTrack = 'finance';
+let currentVideoPath = '';
+let videoDuration = 0;
+let currentResult = null;
+let currentJobId = null;
+
+// ── Tab switching ───────────────────────────────────────────────────────────
+function showTab(tabId, el) {
+  document.querySelectorAll('.tab-content > div').forEach(d => d.style.display = 'none');
+  document.getElementById(tabId).style.display = 'block';
+  document.querySelectorAll('.nav-link').forEach(a => a.classList.remove('active'));
+  el.classList.add('active');
+  if (tabId === 'tab-results') loadResults();
+  return false;
+}
+
+// ── Global Track ────────────────────────────────────────────────────────────
+function setGlobalTrack(track) {
+  gTrack = track;
+  document.getElementById('globalTrackFinance').className = 'track-btn' + (track === 'finance' ? ' active-finance' : '');
+  document.getElementById('globalTrackTft').className = 'track-btn' + (track === 'tft' ? ' active-tft' : '');
+  document.getElementById('scriptTrack').value = track;
+  document.getElementById('editTrack').value = track;
+  document.getElementById('pipelineTrack').value = track;
+  document.getElementById('resultTrackFilter').value = track;
+  // OBS / inbox 경로 업데이트
+  document.getElementById('obs-inbox-path').textContent =
+    `C:\\...\\youtube\\inbox\\${track}\\`;
+  const ccInbox = document.getElementById('capcut-inbox-path');
+  if (ccInbox) ccInbox.textContent = `inbox\\${track}\\`;
+  loadResults();
+}
+
+// ── 대본 생성 ────────────────────────────────────────────────────────────────
+async function generateScript() {
+  const topic = document.getElementById('scriptTopic').value.trim();
+  const track = document.getElementById('scriptTrack').value;
+  if (!topic) { alert('주제를 입력하세요'); return; }
+  const btn = document.getElementById('btnGenScript');
+  btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass me-1"></i>생성 중...';
+  document.getElementById('scriptStatus').textContent = 'Gemini 호출 중...';
+  try {
+    const res = await fetch('/api/generate-script', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({track, topic})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('scriptOutput').value = data.script;
+    document.getElementById('scriptStatus').textContent = `저장됨: ${data.path}`;
+    document.getElementById('scriptStatus').style.color = 'var(--green)';
+  } catch(e) {
+    document.getElementById('scriptStatus').textContent = '오류: ' + e.message;
+    document.getElementById('scriptStatus').style.color = 'var(--red)';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="bi bi-stars me-1"></i>Gemini 생성';
+  }
+}
+
+function copyScript() {
+  const t = document.getElementById('scriptOutput').value;
+  navigator.clipboard.writeText(t).then(() => alert('복사됨!'));
+}
+
+function downloadScript() {
+  const t = document.getElementById('scriptOutput').value;
+  if (!t) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([t], {type: 'text/plain;charset=utf-8'}));
+  a.download = 'script.md'; a.click();
+}
+
+// ── 영상 편집 ────────────────────────────────────────────────────────────────
+function handleEditDrop(ev) {
+  ev.preventDefault();
+  document.getElementById('editDropzone').classList.remove('drag-over');
+  const file = ev.dataTransfer.files[0];
+  if (file) loadVideoFileObj(file);
+}
+
+function loadVideoFile(input) {
+  if (input.files[0]) loadVideoFileObj(input.files[0]);
+}
+
+async function loadVideoFileObj(file) {
+  // 임시 로컬 URL로 미리보기
+  const url = URL.createObjectURL(file);
+  const vid = document.getElementById('videoPreview');
+  vid.src = url; vid.style.display = 'block';
+  document.getElementById('noPreview').style.display = 'none';
+
+  // 업로드해서 서버 경로 얻기
+  const formData = new FormData();
+  formData.append('video', file);
+  formData.append('track', document.getElementById('editTrack').value);
+  const res = await fetch('/api/upload-video', {method: 'POST', body: formData});
+  const data = await res.json();
+  if (data.error) { alert(data.error); return; }
+  currentVideoPath = data.path;
+
+  // 비디오 정보
+  const infoRes = await fetch('/api/video-info', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({video_path: currentVideoPath})
+  });
+  const info = await infoRes.json();
+  if (!info.error) {
+    videoDuration = info.duration;
+    document.getElementById('videoFilename').textContent = info.filename;
+    document.getElementById('videoDuration').textContent = info.duration;
+    document.getElementById('videoRes').textContent = `${info.width}×${info.height}`;
+    document.getElementById('videoFps').textContent = info.fps;
+    const end = document.getElementById('trimEnd');
+    end.max = info.duration; end.value = info.duration;
+    document.getElementById('trimStart').max = info.duration;
+    updateTrimLabels();
+    document.getElementById('videoInfoBox').style.display = 'block';
+  }
+
+  document.getElementById('editNoBideo').style.display = 'none';
+  document.getElementById('editPipelineReady').style.display = 'block';
+  document.getElementById('editReadyPath').textContent = currentVideoPath;
+  document.getElementById('pipelineVideoPath').value = currentVideoPath;
+}
+
+function updateTrimLabels() {
+  const s = parseFloat(document.getElementById('trimStart').value);
+  const e = parseFloat(document.getElementById('trimEnd').value);
+  document.getElementById('trimStartLabel').textContent = s.toFixed(1) + 's';
+  document.getElementById('trimEndLabel').textContent = e.toFixed(1) + 's';
+  document.getElementById('trimDurationLabel').textContent = `구간 길이: ${(e-s).toFixed(1)}s`;
+}
+
+async function trimVideo() {
+  const s = parseFloat(document.getElementById('trimStart').value);
+  const e = parseFloat(document.getElementById('trimEnd').value);
+  const btn = document.getElementById('btnTrim');
+  btn.disabled = true; btn.textContent = '자르는 중...';
+  document.getElementById('trimStatus').textContent = 'moviepy로 트림 처리 중... (잠시 기다려주세요)';
+  try {
+    const res = await fetch('/api/trim-video', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({video_path: currentVideoPath, start: s, end: e})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    currentVideoPath = data.path;
+    document.getElementById('editReadyPath').textContent = currentVideoPath;
+    document.getElementById('pipelineVideoPath').value = currentVideoPath;
+    document.getElementById('trimStatus').textContent = `완료: ${data.duration}초 → ${data.path}`;
+    document.getElementById('trimStatus').style.color = 'var(--green)';
+  } catch(e) {
+    document.getElementById('trimStatus').textContent = '오류: ' + e.message;
+    document.getElementById('trimStatus').style.color = 'var(--red)';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="bi bi-scissors me-1"></i>이 구간으로 자르기';
+  }
+}
+
+function sendToPipeline() {
+  document.getElementById('pipelineVideoPath').value = currentVideoPath;
+  document.getElementById('pipelineTrack').value = document.getElementById('editTrack').value;
+  document.getElementById('pipelineModel').value = document.getElementById('editModel').value;
+  document.getElementById('pipelinePrivacy').value = document.getElementById('editPrivacy').value;
+  document.getElementById('pipelineDryRun').checked = document.getElementById('editDryRun').checked;
+  showTab('tab-pipeline', document.querySelectorAll('.nav-link')[3]);
+  runPipeline();
+}
+
+// ── 파이프라인 ────────────────────────────────────────────────────────────────
+function setPipelinePath(input) {
+  if (input.files[0]) {
+    // 경로 표시 (업로드 없이 경로만)
+    document.getElementById('pipelineVideoPath').value = input.files[0].name;
+  }
+}
+
+function clearLog() {
+  document.getElementById('pipelineLog').innerHTML = '<span style="color:var(--muted)">로그 지움</span>';
+  document.getElementById('pipelineProgressBar').style.width = '0%';
+}
+
+const PIPELINE_STEPS = ['자막 생성', '메타데이터 생성', '썸네일 생성', '업로드'];
+
+async function runPipeline() {
+  const videoPath = document.getElementById('pipelineVideoPath').value.trim();
+  const track     = document.getElementById('pipelineTrack').value;
+  const model     = document.getElementById('pipelineModel').value;
+  const privacy   = document.getElementById('pipelinePrivacy').value;
+  const dryRun    = document.getElementById('pipelineDryRun').checked;
+
+  if (!videoPath) { alert('영상 파일 경로를 입력하세요'); return; }
+
+  const logBox = document.getElementById('pipelineLog');
+  logBox.innerHTML = '';
+  document.getElementById('pipelineProgressBar').style.width = '5%';
+  document.getElementById('pipelineStatus').textContent = '실행 중...';
+
+  try {
+    const res = await fetch('/api/run-pipeline', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({video_path: videoPath, track, model, privacy, dry_run: dryRun})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    currentJobId = data.job_id;
+    subscribeProgress(data.job_id);
+  } catch(e) {
+    logBox.innerHTML = `<span class="log-err">[ERROR] ${e.message}</span>`;
+    document.getElementById('pipelineStatus').textContent = '오류 발생';
+  }
+}
+
+function subscribeProgress(jobId) {
+  const logBox = document.getElementById('pipelineLog');
+  const bar    = document.getElementById('pipelineProgressBar');
+  const status = document.getElementById('pipelineStatus');
+  const es = new EventSource(`/api/progress/${jobId}`);
+  let step = 0;
+
+  es.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.log) {
+      const line = document.createElement('div');
+      line.textContent = data.log;
+      if (data.log.includes('[Step')) { line.className = 'log-step'; step++; bar.style.width = `${Math.min(step * 25, 95)}%`; }
+      else if (data.log.includes('[OK]') || data.log.includes('완료')) line.className = 'log-ok';
+      else if (data.log.includes('[ERROR]')) line.className = 'log-err';
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+    if (data.done) {
+      bar.style.width = '100%';
+      status.textContent = '완료! 결과 탭에서 확인하세요.';
+      status.style.color = 'var(--green)';
+      es.close();
+      loadResults();
+    }
+    if (data.error) {
+      const line = document.createElement('div');
+      line.className = 'log-err';
+      line.textContent = '[ERROR] ' + data.error;
+      logBox.appendChild(line);
+      status.textContent = '오류 발생';
+      status.style.color = 'var(--red)';
+      es.close();
+    }
+  };
+}
+
+// ── 결과 ─────────────────────────────────────────────────────────────────────
+async function loadResults() {
+  const track = document.getElementById('resultTrackFilter').value;
+  const res = await fetch(`/api/outputs/${track}`);
+  const items = await res.json();
+  const list = document.getElementById('resultList');
+  if (!items.length) { list.innerHTML = '<div style="color:var(--muted);font-size:.82rem">결과 없음</div>'; return; }
+  list.innerHTML = items.map(item => {
+    const title = item.meta?.titles?.[0] || '(제목 없음)';
+    const srtBadge = item.has_srt ? '<span class="badge" style="background:var(--accent2);font-size:.65rem">자막</span>' : '';
+    const thumbBadge = item.has_thumbnail ? '<span class="badge" style="background:var(--gold);color:#000;font-size:.65rem">썸네일</span>' : '';
+    return `<div class="result-item" onclick='showResult(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+      <div class="result-ts">${item.timestamp}</div>
+      <div class="result-title">${title}</div>
+      <div class="mt-1 d-flex gap-1">${srtBadge}${thumbBadge}</div>
+    </div>`;
+  }).join('');
+}
+
+function showResult(item) {
+  currentResult = item;
+  document.getElementById('resultDetail').style.display = 'block';
+  document.getElementById('resultPlaceholder').style.display = 'none';
+
+  // 썸네일
+  if (item.has_thumbnail) {
+    const thumbPath = item.run_dir + '/thumbnail.jpg';
+    document.getElementById('resultThumb').src = `/api/file?path=${encodeURIComponent(thumbPath)}`;
+  }
+
+  // 제목 선택
+  const titles = item.meta?.titles || [];
+  document.getElementById('titleOptions').innerHTML = titles.map((t, i) =>
+    `<div class="title-option${i===0?' selected':''}" onclick="selectTitle(this, '${t.replace(/'/g,"&#39;")}')">${i+1}. ${t}</div>`
+  ).join('');
+
+  // 설명, 태그
+  document.getElementById('resultDescription').value = item.meta?.description || '';
+  document.getElementById('resultTags').value = (item.meta?.tags || []).join(', ');
+
+  // 자막
+  const srtPath = item.run_dir + '/subtitles.srt';
+  if (item.has_srt) {
+    document.getElementById('srtCard').style.display = 'block';
+    fetch(`/api/srt-text?path=${encodeURIComponent(srtPath)}`)
+      .then(r => r.text()).then(t => document.getElementById('resultSrt').textContent = t);
+  } else {
+    document.getElementById('srtCard').style.display = 'none';
+  }
+}
+
+function selectTitle(el, title) {
+  document.querySelectorAll('.title-option').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function uploadToYouTube() {
+  if (!currentResult) return;
+  const privacy = document.getElementById('resultPrivacy').value;
+  const status = document.getElementById('uploadStatus');
+  status.textContent = '업로드 준비 중...';
+  status.style.color = 'var(--muted)';
+
+  const selectedTitle = document.querySelector('.title-option.selected');
+  const title = selectedTitle ? selectedTitle.textContent.replace(/^\d+\.\s*/, '') : '';
+  const description = document.getElementById('resultDescription').value;
+  const tags = document.getElementById('resultTags').value.split(',').map(t => t.trim()).filter(Boolean);
+
+  const videoPath = currentResult.result?.video || '';
+  const srtPath   = currentResult.has_srt ? currentResult.run_dir + '/subtitles.srt' : '';
+  const thumbPath = currentResult.has_thumbnail ? currentResult.run_dir + '/thumbnail.jpg' : '';
+  const track     = currentResult.result?.track || 'finance';
+
+  const res = await fetch('/api/run-pipeline', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      video_path: videoPath, track, dry_run: false,
+      privacy, model: 'small'
+    })
+  });
+  const data = await res.json();
+  if (data.error) { status.textContent = '오류: ' + data.error; status.style.color = 'var(--red)'; return; }
+  status.textContent = `업로드 중... (job: ${data.job_id})`;
+  status.style.color = 'var(--accent)';
+  showTab('tab-pipeline', document.querySelectorAll('.nav-link')[3]);
+  subscribeProgress(data.job_id);
+}
+
+// ── exportDocx ───────────────────────────────────────────────────────────────
+async function exportDocx() {
+  const script = document.getElementById('scriptOutput').value.trim();
+  const topic  = document.getElementById('scriptTopic').value.trim() || 'script';
+  const track  = document.getElementById('scriptTrack').value;
+  if (!script) { alert('대본 내용이 없습니다'); return; }
+  try {
+    const res = await fetch('/api/export-docx', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({script, topic, track})
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    a.download = m ? m[1] : 'script.docx';
+    a.click();
+  } catch(e) {
+    alert('Word 저장 오류: ' + e.message);
+  }
+}
+
+// ── AI 영상 제작 탭 ───────────────────────────────────────────────────────────
+function selectMethod(method) {
+  ['auto','capcut','canva'].forEach(m => {
+    const btn   = document.getElementById(`method-${m}`);
+    const panel = document.getElementById(`method-${m}-panel`);
+    if (m === method) {
+      btn.className = 'btn btn-primary';
+      panel.style.display = 'block';
+    } else {
+      btn.className = 'btn btn-outline-secondary';
+      panel.style.display = 'none';
+    }
+  });
+  // 캡컷 inbox 경로 동기화
+  const inboxEl = document.getElementById('capcut-inbox-path');
+  if (inboxEl) inboxEl.textContent = `inbox\\${gTrack}\\`;
+}
+
+async function runAiVideo() {
+  const topic   = document.getElementById('aiVideoTopic').value.trim();
+  const langs   = document.getElementById('aiVideoLangs').value;
+  const formats = document.getElementById('aiVideoFormat').value;
+  const dryRun  = document.getElementById('aiVideoDryRun').checked;
+
+  const logBox  = document.getElementById('aiVideoLog');
+  const bar     = document.getElementById('aiVideoProgressBar');
+  const badge   = document.getElementById('aiVideoStatusBadge');
+  const result  = document.getElementById('aiVideoResult');
+
+  logBox.innerHTML = '';
+  bar.style.width = '5%';
+  badge.textContent = '실행 중';
+  badge.style.background = 'var(--accent)';
+  badge.style.color = '#fff';
+  result.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/run-ai-video', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({topic, langs, formats, dry_run: dryRun})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const es = new EventSource(`/api/progress/${data.job_id}`);
+    let pct = 5;
+    es.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+      if (d.log) {
+        const line = document.createElement('div');
+        line.textContent = d.log;
+        if (d.log.includes('[Phase') || d.log.includes('[Step')) {
+          line.className = 'log-step'; pct = Math.min(pct + 15, 90); bar.style.width = pct + '%';
+        } else if (d.log.includes('[OK]') || d.log.includes('완료')) {
+          line.className = 'log-ok';
+        } else if (d.log.includes('[ERROR]')) {
+          line.className = 'log-err';
+        }
+        logBox.appendChild(line);
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+      if (d.done) {
+        bar.style.width = '100%';
+        badge.textContent = '완료';
+        badge.style.background = 'var(--green)';
+        result.style.display = 'block';
+        if (d.result?.run_dir) {
+          document.getElementById('aiVideoResultPath').textContent = d.result.run_dir;
+        }
+        es.close();
+        loadResults();
+      }
+      if (d.error) {
+        const line = document.createElement('div');
+        line.className = 'log-err';
+        line.textContent = '[ERROR] ' + d.error;
+        logBox.appendChild(line);
+        badge.textContent = '오류';
+        badge.style.background = 'var(--red)';
+        es.close();
+      }
+    };
+  } catch(e) {
+    logBox.innerHTML = `<span class="log-err">[ERROR] ${e.message}</span>`;
+    badge.textContent = '오류';
+    badge.style.background = 'var(--red)';
+  }
+}
+
+async function openInboxFolder() {
+  const track = gTrack;
+  try {
+    await fetch('/api/open-folder', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({track})
+    });
+  } catch(e) { /* 무시 */ }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+setGlobalTrack('finance');
+selectMethod('auto');
+loadResults();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

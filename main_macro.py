@@ -415,13 +415,17 @@ Return ONLY valid JSON, no markdown, no explanation:
                 b = int(base_b + ratio * 30)
                 draw.line([(0, y), (w, y)], fill=(r, g, b))
 
-            # 장면 번호
-            try:
-                font_large = ImageFont.truetype("arial.ttf", 120)
-                font_small = ImageFont.truetype("arial.ttf", 40)
-            except (OSError, IOError):
-                font_large = ImageFont.load_default()
-                font_small = font_large
+            # 장면 번호 (한글 지원 폰트 우선)
+            def _load_font(size):
+                for path in ["C:/Windows/Fonts/malgun.ttf", "C:/Windows/Fonts/gulim.ttc", "arial.ttf"]:
+                    try:
+                        return ImageFont.truetype(path, size)
+                    except (OSError, IOError):
+                        pass
+                return ImageFont.load_default()
+
+            font_large = _load_font(120)
+            font_small = _load_font(40)
 
             scene_no = scene.get("scene_no", index + 1)
             draw.text((80, 80), f"Scene {scene_no}", font=font_large, fill=(255, 255, 255, 180))

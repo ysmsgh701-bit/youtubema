@@ -18,3 +18,8 @@ requests
 beautifulsoup4
 python-dotenv
 tenacity>=8.2.0
+
+# 트랙 파이프라인 (직접 녹화 후처리용)
+faster-whisper       # Whisper 자막 생성 (large-v3 권장)
+watchdog             # inbox 폴더 감시 → 파이프라인 자동 트리거
+pyyaml               # 트랙 프로파일 YAML 파싱
