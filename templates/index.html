@@ -139,58 +139,57 @@ textarea.form-control { font-family: 'Consolas', monospace; font-size: 0.82rem; 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <div id="tab-script">
   <div class="row g-3">
-    <div class="col-lg-5">
-      <div class="card">
-        <div class="section-title">주제 입력</div>
-        <input type="text" class="form-control mb-3" id="scriptTopic"
-               placeholder="예: 엑셀 대신 AI 쓰는 3가지 이유"
-               onkeydown="if(event.key==='Enter') generateScript()">
-        <div class="d-flex gap-2 mb-3">
+
+    <!-- 좌측: 블로그 입력 -->
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="section-title mb-0">블로그 원문 붙여넣기</div>
+          <button class="btn btn-outline-secondary btn-sm" onclick="clearBlog()">
+            <i class="bi bi-x-circle me-1"></i>지우기
+          </button>
+        </div>
+        <textarea id="blogInput" class="form-control mb-3" rows="16"
+                  placeholder="블로그 글을 여기에 붙여넣기 하세요.&#10;&#10;티스토리, 네이버 블로그, 브런치, 노션 등&#10;어떤 형식이든 그대로 붙여넣으면 됩니다."></textarea>
+        <div class="d-flex gap-2">
           <select class="form-select form-select-sm" id="scriptTrack">
             <option value="finance">재무현직자 AI활용</option>
             <option value="tft">TFT 플레이</option>
           </select>
-          <button class="btn btn-primary" onclick="generateScript()" id="btnGenScript">
-            <i class="bi bi-stars me-1"></i>Gemini 생성
+          <button class="btn btn-primary flex-shrink-0" onclick="generateScript()" id="btnGenScript">
+            <i class="bi bi-magic me-1"></i>대본으로 변환
           </button>
         </div>
-        <div id="scriptStatus" class="text-muted" style="font-size:.8rem"></div>
-      </div>
+        <div id="scriptStatus" class="mt-2" style="font-size:.8rem;color:var(--muted)"></div>
 
-      <!-- 대본 팁 -->
-      <div class="card">
-        <div class="section-title">트랙별 대본 가이드</div>
-        <div style="font-size:.82rem;color:var(--muted);line-height:1.7">
-          <span class="track-badge-finance">재무AI</span>
-          <ul style="margin-top:6px;padding-left:16px">
-            <li>훅: 실무 고민을 첫 문장으로</li>
-            <li>본론: AI 도구 화면 시연 기준</li>
-            <li>마무리: 실제 적용 방법 + CTA</li>
-          </ul>
-          <span class="track-badge-tft">TFT</span>
-          <ul style="margin-top:6px;padding-left:16px">
-            <li>훅: 상황 소개 ("지금부터 미칩니다")</li>
-            <li>본론: 핵심 플레이 단계별 해설</li>
-            <li>마무리: 교훈/팁 + 구독 유도</li>
-          </ul>
+        <!-- 변환 팁 -->
+        <div class="mt-3 p-3" style="background:var(--surface2);border-radius:8px;font-size:.79rem;color:var(--muted);line-height:1.8">
+          <div style="color:var(--text);font-weight:600;margin-bottom:4px"><i class="bi bi-lightbulb me-1" style="color:var(--gold)"></i>변환 팁</div>
+          <div>• 블로그 제목이 있으면 첫 줄에 포함하세요</div>
+          <div>• 소제목, 번호 목록 구조가 있을수록 섹션 구분이 잘 됩니다</div>
+          <div>• 트랙 선택이 맞는지 확인 후 변환하세요</div>
+          <div><span class="track-badge-finance">재무AI</span> 구어체+실무 시연 중심 대본</div>
+          <div><span class="track-badge-tft">TFT</span> 에너지감 있는 게임 해설 대본</div>
         </div>
       </div>
     </div>
 
-    <div class="col-lg-7">
-      <div class="card" style="height:calc(100% - 0px)">
+    <!-- 우측: 변환된 대본 -->
+    <div class="col-lg-6">
+      <div class="card h-100">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="section-title mb-0">생성된 대본</div>
+          <div class="section-title mb-0">변환된 유튜브 대본</div>
           <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary btn-sm" onclick="copyScript()"><i class="bi bi-clipboard me-1"></i>복사</button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="downloadScript()"><i class="bi bi-download me-1"></i>MD 저장</button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="exportDocx()" style="color:var(--accent)"><i class="bi bi-file-word me-1"></i>Word 저장</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="downloadScript()"><i class="bi bi-download me-1"></i>MD</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="exportDocx()" style="color:var(--accent)"><i class="bi bi-file-word me-1"></i>Word</button>
           </div>
         </div>
         <textarea id="scriptOutput" class="form-control" rows="22"
-                  placeholder="주제를 입력하고 'Gemini 생성'을 클릭하세요..."></textarea>
+                  placeholder="블로그 글을 붙여넣고 '대본으로 변환'을 클릭하세요..."></textarea>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -964,30 +963,38 @@ function setGlobalTrack(track) {
   loadResults();
 }
 
-// ── 대본 생성 ────────────────────────────────────────────────────────────────
+// ── 대본 변환 (블로그 -> 유튜브 대본) ────────────────────────────────────────
 async function generateScript() {
-  const topic = document.getElementById('scriptTopic').value.trim();
+  const blogContent = document.getElementById('blogInput').value.trim();
   const track = document.getElementById('scriptTrack').value;
-  if (!topic) { alert('주제를 입력하세요'); return; }
+  if (!blogContent) { alert('블로그 글을 붙여넣기 하세요'); return; }
   const btn = document.getElementById('btnGenScript');
-  btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass me-1"></i>생성 중...';
-  document.getElementById('scriptStatus').textContent = 'Gemini 호출 중...';
+  btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass me-1"></i>변환 중...';
+  const statusEl = document.getElementById('scriptStatus');
+  statusEl.textContent = `Gemini 변환 중... (${blogContent.length}자)`;
+  statusEl.style.color = 'var(--muted)';
   try {
     const res = await fetch('/api/generate-script', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({track, topic})
+      body: JSON.stringify({track, blog_content: blogContent})
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     document.getElementById('scriptOutput').value = data.script;
-    document.getElementById('scriptStatus').textContent = `저장됨: ${data.path}`;
-    document.getElementById('scriptStatus').style.color = 'var(--green)';
+    statusEl.textContent = `변환 완료 - 저장됨: ${data.path}`;
+    statusEl.style.color = 'var(--green)';
   } catch(e) {
-    document.getElementById('scriptStatus').textContent = '오류: ' + e.message;
-    document.getElementById('scriptStatus').style.color = 'var(--red)';
+    statusEl.textContent = '오류: ' + e.message;
+    statusEl.style.color = 'var(--red)';
   } finally {
-    btn.disabled = false; btn.innerHTML = '<i class="bi bi-stars me-1"></i>Gemini 생성';
+    btn.disabled = false; btn.innerHTML = '<i class="bi bi-magic me-1"></i>대본으로 변환';
   }
+}
+
+function clearBlog() {
+  document.getElementById('blogInput').value = '';
+  document.getElementById('scriptOutput').value = '';
+  document.getElementById('scriptStatus').textContent = '';
 }
 
 function copyScript() {

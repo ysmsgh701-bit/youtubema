@@ -53,17 +53,18 @@ def index():
 
 @app.route("/api/generate-script", methods=["POST"])
 def api_generate_script():
-    data   = request.json or {}
-    track  = data.get("track", "finance")
-    topic  = data.get("topic", "").strip()
-    if not topic:
-        return jsonify({"error": "주제를 입력하세요"}), 400
+    data         = request.json or {}
+    track        = data.get("track", "finance")
+    blog_content = data.get("blog_content", "").strip()
+    if not blog_content:
+        return jsonify({"error": "블로그 글을 입력하세요"}), 400
     try:
-        from scripts.generate_script import generate_script, save_script
+        from scripts.generate_script import generate_script, save_script, _extract_title
         profile  = _profile(track)
         api_key  = os.environ.get("GEMINI_API_KEY")
-        script   = generate_script(topic, profile, api_key=api_key)
-        path     = save_script(script, os.path.join(OUTPUT_DIR, "scripts"), topic)
+        script   = generate_script(blog_content, profile, api_key=api_key)
+        title    = _extract_title(blog_content)
+        path     = save_script(script, os.path.join(OUTPUT_DIR, "scripts"), title)
         return jsonify({"script": script, "path": path})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
